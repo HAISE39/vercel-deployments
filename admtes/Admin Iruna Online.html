@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Iruna Mod - Admin Panel</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD70QwUo60apoNjq6_zLjvfAvBpTUg0QGc",
+      authDomain: "iruna-online-abd76.firebaseapp.com",
+      projectId: "iruna-online-abd76",
+      storageBucket: "iruna-online-abd76.appspot.com",
+      messagingSenderId: "566707457775",
+      appId: "1:566707457775:web:4c4d85db1bc89c587b551a",
+      databaseURL: "https://iruna-online-abd76-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Simpan user baru
+    window.saveUser = function () {
+      const uid = document.getElementById("uid").value.trim();
+      const pass = document.getElementById("pass").value.trim();
+      const status = document.getElementById("status").value;
+      const days = parseInt(document.getElementById("expire").value.trim());
+
+      if (!uid || !pass || isNaN(days)) {
+        alert("Isi semua kolom!");
+        return;
+      }
+
+      const now = Date.now();
+      const expireTime = now + days * 24 * 60 * 60 * 1000;
+
+      set(ref(db, "IrunaUsers/" + uid), {
+        Password: pass,
+        Status: status,
+        ExpiredAt: expireTime
+      }).then(() => {
+        alert("✅ Disimpan!");
+        document.getElementById("uid").value = "";
+        document.getElementById("pass").value = "";
+        document.getElementById("expire").value = "";
+      });
+    }
+
+    // Tampilkan semua data
+    window.onload = function () {
+      const usersRef = ref(db, "IrunaUsers");
+      onValue(usersRef, (snapshot) => {
+        const data = snapshot.val();
+        const now = Date.now();
+        let html = "<h3>📋 Pengguna Mod Terdaftar</h3>";
+        for (const uid in data) {
+          const d = data[uid];
+          const expiredDate = new Date(d.ExpiredAt).toLocaleString();
+          const remaining = Math.max(0, d.ExpiredAt - now);
+          const daysLeft = Math.floor(remaining / (1000 * 60 * 60 * 24));
+
+          html += `
+            <div style="background:#222;padding:10px;margin:10px 0;border-left:5px solid #4caf50">
+              <b>UID:</b> ${uid}<br>
+              <b>Password:</b> ${d.Password}<br>
+              <b>Status:</b> ${d.Status} 
+              <select onchange="updateStatus('${uid}', this.value)">
+                <option value="Aktif" ${d.Status === "Aktif" ? "selected" : ""}>Aktif</option>
+                <option value="Banned" ${d.Status === "Banned" ? "selected" : ""}>Banned</option>
+              </select><br>
+              <b>Expired:</b> ${expiredDate} (${daysLeft} hari)
+            </div>`;
+        }
+        document.getElementById("list").innerHTML = html;
+      });
+    }
+
+    window.updateStatus = function (uid, newStatus) {
+      update(ref(db, "IrunaUsers/" + uid), { Status: newStatus }).then(() => {
+        alert("✔️ Status diperbarui");
+      });
+    }
+  </script>
+</head>
+<body style="background:#111;color:white;padding:20px;font-family:sans-serif">
+  <h2>🛡️ Iruna Online Mod Panel</h2>
+  <label>UID (Android ID):</label><br>
+  <input id="uid" style="width:300px"><br>
+  <label>Password:</label><br>
+  <input id="pass" style="width:300px"><br>
+  <label>Status:</label><br>
+  <select id="status">
+    <option value="Aktif">Aktif</option>
+    <option value="Banned">Banned</option>
+  </select><br>
+  <label>Expired (hari):</label><br>
+  <input id="expire" type="number" style="width:100px" value="7"><br><br>
+  <button onclick="saveUser()" style="padding:8px 16px">✅ Simpan Pengguna</button>
+
+  <hr style="margin:30px 0">
+  <div id="list"></div>
+</body>
+</html>
